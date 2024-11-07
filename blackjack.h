@@ -2,8 +2,11 @@
 #define BLACKJACK_H
 
 int decks = 6;
-int dHOS17 = 0; //dealer hist on soft 17
+int dHOS17 = 0; //dealer hits on soft 17
 int verbose = 0;
+int coins = 500;
+int bet = 10;
+float blackjack_multiplier = 1.5;
 
 struct card {
     char *name;
@@ -116,10 +119,31 @@ int evaluateCards(struct card *cards, int number) {
     return score;
 }
 
-void startGame(struct card *deck) {
-    defineCards(deck);
+//TODO: FINISH WINNER LOGIC
 
-    struct card *player_cards = malloc(16 * sizeof(struct card)); int p_index = 0;
+void determineWinner(int player_score, int dealer_score, int temp_bet, int p_card, int d_card) {
+    //determine winner
+    if(player_score == 21 && p_card == 2) {
+        if(dealer_score == 21 && d_card == 2) {
+            printf("Both you and the dealer got blackjack...\n");
+        } else {
+            printf("BLACKJACK!!! You win\n");
+            coins += (int)(temp_bet * blackjack_multiplier);
+        }
+    } else if(player_score > 21 || dealer_score > player_score || (dealer_score == 21 && d_card == 2)) {
+        printf("You lost!\n");
+        coins-=temp_bet;
+    } else if(player_score == dealer_score) {
+        printf("Tie...\n");
+    } else {
+        printf("You won!\n");
+        coins+=temp_bet;
+    }
+
+}
+
+void startGame(struct card *deck) {
+    lstruct card *player_cards = malloc(16 * sizeof(struct card)); int p_index = 0;
     struct card *dealer_cards = malloc(16 * sizeof(struct card)); int d_index = 0; 
     
     int player_score=0;
@@ -129,7 +153,9 @@ void startGame(struct card *deck) {
 
     char *command = malloc(32 * sizeof(char));
 
-    while(1) {
+    int temp_bet = bet;
+
+    while(player_score < 21) {
         printf("What do you do...");
         fgets(command, 32, stdin);
         char f_command = tolower(command[0]); //formatted command
@@ -146,61 +172,41 @@ void startGame(struct card *deck) {
         } else {
             printf("Not quite a command...\n");
         }
-        if(player_score > 21) {
-            printf("You lost!\n");
-            //implement lost logic
-            free(command);
-            free(player_cards);
-            free(dealer_cards);
-            return;
-        }
-        if(player_score == 21) {
-            if(p_index == 2) {
-                printf("Blackjack!!! You won!\n");
+    }
 
-                free(command);
-                free(player_cards);
-                free(dealer_cards);
-                return;
+    if(player_score <= 21) {
+        int dHA=0; //dealer has ace to convert
+
+        while(dealer_score <= 17) {
+            if(dealer_score < 17) {
+                struct card card = getCard(deck, deck_index); deck_index++;
+                dealer_cards[d_index] = card; d_index++;
+                dealer_score=evaluateCards(dealer_cards, d_index);
+                printf("Dealer got %s and his score is now %d\n", card.name, dealer_score);
+                if(strcmp(card.name, "Ace")==0) {
+                    dHA=1;
+                }
+            } else if(dealer_score <= 17 && dHA && dHOS17) {
+                dHA=0;
+                struct card card = getCard(deck, deck_index); deck_index++;
+                dealer_cards[d_index] = card; d_index++;
+                dealer_score=evaluateCards(dealer_cards, d_index);
+                printf("Dealer got %s and his score is now %d\n", card.name, dealer_score);
+                if(strcmp(card.name, "Ace")==0) {
+                    dHA=1;
+                }
             } else {
                 break;
             }
         }
     }
 
-    int dHA=0; //dealer has ace to convert
+    
 
-    while(dealer_score <= 17) {
-        if(dealer_score < 17) {
-            struct card card = getCard(deck, deck_index); deck_index++;
-            dealer_cards[d_index] = card; d_index++;
-            dealer_score=evaluateCards(dealer_cards, d_index);
-            printf("Dealer got %s and his score is now %d\n", card.name, dealer_score);
-            if(strcmp(card.name, "Ace")==0) {
-                dHA=1;
-            }
-        } else if(dealer_score <= 17 && dHA) {
-            dHA=0;
-            struct card card = getCard(deck, deck_index); deck_index++;
-            dealer_cards[d_index] = card; d_index++;
-            dealer_score=evaluateCards(dealer_cards, d_index);
-            printf("Dealer got %s and his score is now %d\n", card.name, dealer_score);
-            if(strcmp(card.name, "Ace")==0) {
-                dHA=1;
-            }
-        } else {
-            break;
-        }
-    }
+    player_score = evaluateCards(player_cards, p_index);
+    dealer_score = (player_score <= 21) ? evaluateCards(dealer_cards, d_index) : 0;
 
-    //determine winner
-    if(dealer_score > 21 || dealer_score < player_score) {
-        printf("You won!\n");
-    } else if(dealer_score == player_score) {
-        printf("Equal score\n");    
-    } else {
-        printf("You lost!\n");
-    }
+    determineWinner(player_score, dealer_score, temp_bet, p_index, d_index);
 
     if(deck_index >= decks * 52 * 2 / 3) {
         shuffleCards(deck); deck_index=0;
