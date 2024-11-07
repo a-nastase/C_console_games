@@ -143,7 +143,7 @@ void determineWinner(int player_score, int dealer_score, int temp_bet, int p_car
 }
 
 void startGame(struct card *deck) {
-    lstruct card *player_cards = malloc(16 * sizeof(struct card)); int p_index = 0;
+    struct card *player_cards = malloc(16 * sizeof(struct card)); int p_index = 0;
     struct card *dealer_cards = malloc(16 * sizeof(struct card)); int d_index = 0; 
     
     int player_score=0;
